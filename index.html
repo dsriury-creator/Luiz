@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema do Trabalho beta</title>
+</head>
+<body style="background: #000; margin: 0; overflow: hidden;">
+    <script>
+    (function() {
+        const SENHA_ADMIN = "9ano"; 
+        const SENHA_USER  = "LM"; 
+        const LISTA_BANIDOS = []; 
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1501905751768039564/PvKiHrQJo71MoI6C6Dry3aFivoBZj32wdT2xmDAx_6PQaHhsWcy3i83Zy2HjbIQUd_tc"; 
+
+        function gerarID() {
+            const info = navigator.userAgent + screen.width + screen.height;
+            let hash = 0;
+            for (let i = 0; i < info.length; i++) {
+                const char = info.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return "ID-" + Math.abs(hash).toString(16).toUpperCase();
+        }
+
+        const MEU_ID = gerarID();
+
+        if (LISTA_BANIDOS.includes(MEU_ID)) {
+            document.body.innerHTML = `<div style="color:red; text-align:center; margin-top:50px; font-family:sans-serif;"><h1>ACESSO NEGADO</h1><p>Seu dispositivo (${MEU_ID}) foi banido pelo administrador.</p></div>`;
+            return;
+        }
+
+        let painelUserAtivo = localStorage.getItem('user_ativo') !== 'false';
+        let corPrincipal = localStorage.getItem('tema_cor') || '#808080';
+        
+        // CORREÇÃO AQUI: String fechada corretamente
+        let textoInfo = localStorage.getItem('texto_info') || "Bem vindo, digite LM pra ver o conteúdo";
+        
+        if (!localStorage.getItem('logs_sistema')) {
+            localStorage.setItem('logs_sistema', JSON.stringify([]));
+        }
+
+        async function enviarDiscord(log) {
+            if (!WEBHOOK_URL || WEBHOOK_URL === "SUA_URL_AQUI") return;
+            const payload = { embeds: [{ title: "🔔 Novo Login Detectado", color: log.tipo === "ADM" ? 0xff0000 : 0x00ffff, fields: [{ name: "Painel", value: `\`${log.tipo}\``, inline: true }, { name: "ID Único", value: `\`${log.id}\``, inline: true }, { name: "IP", value: `\`${log.ip}\``, inline: true }, { name: "Horário", value: log.hora, inline: false }, { name: "Dispositivo", value: `\`${log.modelo}\``, inline: false }], footer: { text: "Monitoramento de Acesso" }, timestamp: new Date().toISOString() }] };
+            try { await fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } catch (e) { console.error("Erro Webhook:", e); }
+        }
+
+        const CONTEUDO_BOTAO_1 = `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>🧱 sobre: HTML</h3><p>1. HTML significa HyperText Markup Language.<br>2. É a linguagem de marcação padrão da Web.<br>3. Foi criado por Tim Berners-Lee em 1991.<br>4. Elementos HTML são os blocos de construção.<br>5. As tags normalmente vêm em pares: abertura e fechamento.<br>6. A tag DOCTYPE informa a versão do HTML.<br>7. O elemento raiz de uma página é a tag html.<br>8. Metadados do site ficam dentro da tag head.<br>9. O conteúdo visível fica dentro da tag body.<br>10. Tags h1 a h6 definem a importância dos títulos.<br>11. Parágrafos são definidos pela tag p.<br>12. Links usam a tag a com o atributo href.<br>13. Imagens usam img e exigem o atributo alt.<br>14. Listas não ordenadas usam ul e listas ordenadas ol.<br>15. Itens de lista são marcados com li.<br>16. O HTML5 é a versão mais atual e poderosa.<br>17. Atributos fornecem informações extras sobre elementos.<br>18. A tag div é usada para agrupar blocos de conteúdo.<br>19. A tag span é usada para agrupar elementos em linha.<br>20. Formulários são criados com a tag form.<br>21. Entradas de dados usam a tag input.<br>22. Botões podem ser criados com a tag button.<br>23. Tabelas usam table, tr (linhas) e td (células).<br>24. Comentários são feitos com pontos de exclamação.<br>25. Tags semânticas como header e footer ajudam o SEO.<br>26. O elemento canvas permite desenhar gráficos via JS.<br>27. Tags de áudio e vídeo são nativas no HTML5.<br>28. Caracteres especiais usam entidades como &amp;nbsp;.<br>29. HTML define a estrutura, mas não o estilo.<br>30. É a linguagem essencial para qualquer desenvolvedor.</p></div>`;
+        const CONTEUDO_BOTAO_2 = `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>🎨 sobre: CSS</h3><p>1. CSS significa Cascading Style Sheets.<br>2. Ele descreve como os elementos HTML são exibidos.<br>3. Economiza muito trabalho controlando vários layouts.<br>4. Folhas de estilo externas são armazenadas em arquivos .css.<br>5. Seletores apontam para o elemento HTML que você quer mudar.<br>6. A propriedade color altera a cor do texto.<br>7. Font-size define o tamanho da tipografia.<br>8. Background-color define a cor de fundo.<br>9. O Box Model consiste em margem, borda, preenchimento e conteúdo.<br>10. Padding cria espaço dentro da borda.<br>11. Margin cria espaço fora da borda.<br>12. Border define a espessura e estilo da linha ao redor.<br>13. Text-align alinha o conteúdo horizontalmente.<br>14. Display: flex é a forma moderna de criar layouts.<br>15. Grid Layout divide a página em colunas e linhas.<br>16. Position: absolute move elementos de forma livre.<br>17. Z-index controla a sobreposição de camadas.<br>18. Media Queries permitem design responsivo (celular).<br>19. Hover é um pseudo-classe para passar o mouse.<br>20. Transitions criam mudanças suaves entre states.<br>21. Animations permitem criar movimentos complexos.<br>22. Border-radius arredonda os cantos dos elementos.<br>23. Box-shadow adiciona sombras decorativas.<br>24. Opacity controla a transparência de um objeto.<br>25. Font-family define o tipo de letra do site.<br>26. CSS Variáveis permitem reutilizar cores facilmente.<br>27. Import permite carregar fontes externas do Google.<br>28. Width e Height definem largura e altura.<br>29. Calc() permite fazer cálculos matemáticos no estilo.<br>30. CSS transforma documentos simples em artes visuais.</p></div>`;
+        const CONTEUDO_BOTAO_3 = `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>🧠JavaScript</h3><p>1. JavaScript é uma linguagem de alto nível e dinâmica.<br>2. Foi criada em 1995 por Brendan Eich.<br>3. É a linguagem oficial do navegador (client-side).<br>4. Variáveis podem ser declaradas com let, const ou var.<br>5. Const é usado para valores que não mudam.<br>6. Let permite criar variáveis de escopo de bloco.<br>7. Console.log() é a ferramenta principal de depuração.<br>8. Funções são blocos de código executáveis.<br>9. Arrow functions são formas curtas de escrever funções.<br>10. Arrays são listas que guardam múltiplos dados.<br>11. Objetos guardam coleções de pares chave-valor.<br>12. O DOM é a representação do HTML para o JS.<br>13. Document.getElementById() seleciona elementos.<br>14. Event Listeners detectam cliques e teclas.<br>15. Condicionais If/Else controlam o fluxo de decisão.<br>16. Loops for e while repetem tarefas automaticamente.<br>17. JSON é o formato padrão para troca de dados.<br>18. Fetch API busca dados de servidores externos.<br>19. Promessas (Promises) lidam com processos assíncronos.<br>20. SetTimeout executa código após um atraso.<br>21. LocalStorage salva dados permanentemente no browser.<br>22. Math.random() gera números aleatórios.<br>23. Strings são textos delimitados por aspas.<br>24. Operadores lógicos como && e || comparam valores.<br>25. Template Literals permitem usar variáveis em textos.<br>26. O JS pode ser usado no servidor com Node.js.<br>27. Classes permitem programação orientada a objetos.<br>28. Export/Import organizam o código em módulos.<br>29. Try/Catch captura e trata erros no script.<br>30. JavaScript torna a internet interativa e viva.</p></div>`;
+        const CONTEUDO_VIDEOS = `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>🎥 Vídeos </h3><p><b>Aulas e Referências:</b></p><p>1. Estrutura de Tags: <a href="#" style="color:var(--primary)">link_aula_html.com</a><br>2. Estilização Moderna: <a href="#" style="color:var(--primary)">link_aula_css.com</a><br>3. Lógica de Programação: <a href="#" style="color:var(--primary)">link_aula_js.com</a></p></div>`;
+        const CONTEUDO_CREDITOS= `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>👥  Dv</h3><p>Este projeto foi desenvolvido por:</p><ul style="color:var(--primary); font-weight:bold;"><li>0Ds</li><li>meu insta:@0ds.20</li><li>bye</li></ul></div>`;
+
+        async function registrarAcesso(tipo) {
+            let ip = "Desconhecido";
+            try { const response = await fetch('https://api.ipify.org?format=json'); const data = await response.json(); ip = data.ip; } catch (e) { console.log("Erro IP"); }
+            const log = { tipo: tipo, id: MEU_ID, hora: new Date().toLocaleString('pt-BR'), ip: ip, modelo: navigator.userAgent.split('(')[1]?.split(')')[0] || "Desconhecido" };
+            let logs = JSON.parse(localStorage.getItem('logs_sistema'));
+            logs.unshift(log);
+            if(logs.length > 50) logs.pop();
+            localStorage.setItem('logs_sistema', JSON.stringify(logs));
+            enviarDiscord(log);
+        }
+
+        const CONTEUDO_ADMIN = () => `<div style="padding:20px; color:#fff; font-family:sans-serif;"><h2 style="color:var(--primary);">ADMIN</h2><p style="font-size:10px; color:#666;">SEU ID: ${MEU_ID}</p><hr style="border:1px solid #333; margin-bottom:20px;"><div style="background:#111; padding:15px; border-radius:8px; border:1px solid var(--primary); margin-bottom:15px;"><p style="margin-top:0; color:var(--primary)">📊 <b>LOGIN</b></p><div id="listaLogs" style="max-height:150px; overflow-y:auto; font-size:11px; text-align:left; background:#000; padding:10px; border-radius:4px; border:1px solid #222;">${JSON.parse(localStorage.getItem('logs_sistema')).map(l => `<div style="border-bottom:1px solid #222; padding:5px 0;"><b style="color:var(--primary)">[${l.tipo}]</b> ID: ${l.id}<br>${l.hora} | IP: ${l.ip}</div>`).join('')}</div><button class="btn-adm" style="margin-top:10px; background:#444;" onclick="localStorage.setItem('logs_sistema','[]'); window.open(window.location.href, '_self');">LIMPAR LOGIN</button></div><div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:15px;"><p style="margin-top:0">📝 <b>Texto Inicial</b></p><textarea id="editTextoInfo" style="width:100%; height:60px; background:#1a1a1a; color:#fff; border:1px solid #333; padding:8px; border-radius:4px;">${textoInfo}</textarea><button class="btn-adm" style="background:var(--primary); color:#000; margin-top:10px;" onclick="window.salvarTexto()">SALVAR TEXTO</button></div><div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-top:15px;"><button id="btnToggleUser" class="btn-adm" onclick="window.toggleUser()">${painelUserAtivo ? "Desativar User" : "Ativar User"}</button></div><div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-top:15px;"><div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px;">${['#00ff88','#ff3333','#00bfff','#ffffff','#ffff00','#ff8c00','#a020f0','#ff69b4','#00ffff','#808080'].map(c => `<div onclick="window.mudarCor('${c}')" style="width:25px; height:25px; background:${c}; border-radius:4px; cursor:pointer; border:1px solid #fff"></div>`).join('')}</div></div></div>`;
+
+        function setup() {
+            const s = document.createElement('style');
+            s.textContent = `:root { --primary: ${corPrincipal}; } #TelaBloqueio, #TelaConteudo { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999; font-family: sans-serif; color: #fff; } #TelaBloqueio { background: #080808; display: flex; align-items: center; justify-content: center; } #TelaConteudo { display: none; background: #050505; flex-direction: column; overflow-y: auto; } .box { background: #111; padding: 30px; border-radius: 12px; border: 1px solid var(--primary); text-align: center; width: 85%; max-width: 320px; } input { width: 100%; padding: 12px; margin: 10px 0; background: #1a1a1a; border: 1px solid #333; color: var(--primary); border-radius: 6px; text-align: center; box-sizing: border-box; font-size: 18px; outline: none; } .btn { width: 100%; padding: 12px; background: var(--primary); color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 10px; } .btn-adm { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; cursor: pointer; font-size: 12px; margin-top:5px; } .topo { background: var(--primary); color: #000; padding: 15px; font-weight: bold; text-align: center; } .info-display { font-size: 13px; color: #ccc; margin-bottom: 15px; line-height: 1.4; background: #000; padding: 10px; border-radius: 5px; border-left: 2px solid var(--primary); text-align: left; }`;
+            document.head.appendChild(s);
+
+            const telaBloqueio = document.createElement('div');
+            telaBloqueio.id = "TelaBloqueio";
+            telaBloqueio.innerHTML = `<div class="box"><div style="color:#555; font-size:10px; letter-spacing:3px; margin-bottom:15px;">painel de consulta</div><div class="info-display" id="mainInfoText">${textoInfo}</div><div style="font-size:9px; color:#444; margin-bottom:10px;">SEU ID: ${MEU_ID}</div><input type="password" id="campoSenha" placeholder="SENHA"><button class="btn" id="btnVerificar">ENTRAR</button></div>`;
+            document.body.appendChild(telaBloqueio);
+
+            const telaConteudo = document.createElement('div');
+            telaConteudo.id = "TelaConteudo";
+            telaConteudo.innerHTML = `<div class="topo" id="statusTopo">ACESSO</div><div id="areaConteudo"></div><button id="btnSair" style="margin:25px; background:#ff3333; color:#fff; border:none; padding:12px; border-radius:6px; width:120px; font-weight:bold; cursor:pointer;">SAIR</button>`;
+            document.body.appendChild(telaConteudo);
+
+            window.salvarTexto = () => { textoInfo = document.getElementById('editTextoInfo').value; localStorage.setItem('texto_info', textoInfo); document.getElementById('mainInfoText').textContent = textoInfo; alert("Salvo!"); };
+            window.mudarCor = (cor) => { corPrincipal = cor; localStorage.setItem('tema_cor', cor); document.documentElement.style.setProperty('--primary', cor); };
+            window.toggleUser = () => { painelUserAtivo = !painelUserAtivo; localStorage.setItem('user_ativo', painelUserAtivo); alert("Status alterado!"); };
+
+            document.getElementById('btnVerificar').onclick = () => {
+                const campo = document.getElementById('campoSenha');
+                const entrada = campo.value;
+                const area = document.getElementById('areaConteudo');
+                if (entrada === SENHA_ADMIN) { registrarAcesso("ADM"); area.innerHTML = CONTEUDO_ADMIN(); document.getElementById('statusTopo').textContent = "ADMINISTRADOR"; abrirPainel(); } 
+                else if (entrada === SENHA_USER) { 
+                    if(!painelUserAtivo) return alert("BLOQUEADO"); 
+                    registrarAcesso("USER"); 
+                    area.innerHTML = `<div style="padding:20px;">
+                        <button class="btn" id="uBtn1">📖 LINGUAGEM HTML</button>
+                        <div id="uBox1" style="display:none; margin-bottom:15px;">${CONTEUDO_BOTAO_1}</div>
+                        <button class="btn" id="uBtn2">🎨 LINGUAGEM CSS</button>
+                        <div id="uBox2" style="display:none; margin-bottom:15px;">${CONTEUDO_BOTAO_2}</div>
+                        <button class="btn" id="uBtn3">🧠 LINGUAGEM JS</button>
+                        <div id="uBox3" style="display:none; margin-bottom:15px;">${CONTEUDO_BOTAO_3}</div>
+                        <button class="btn" id="uBtn4" style="background:#ff8c00;">🎥 VÍDEOS </button>
+                        <div id="uBox4" style="display:none; margin-bottom:15px;">${CONTEUDO_VIDEOS}</div>
+                        <button class="btn" id="uBtn5" style="background:#a020f0; color:#fff;">👥 CRÉDITOS</button>
+                        <div id="uBox5" style="display:none; margin-bottom:15px;">${CONTEUDO_CREDITOS}</div>
+                    </div>`; 
+                    document.getElementById('statusTopo').textContent = "Luiz Magno"; 
+                    abrirPainel(); 
+                    [1,2,3,4,5].forEach(i => document.getElementById(`uBtn${i}`).onclick = () => { 
+                        const d = document.getElementById(`uBox${i}`); 
+                        d.style.display = d.style.display === "none" ? "block" : "none"; 
+                    }); 
+                }
+                else { alert("SENHA INCORRETA"); }
+                campo.value = "";
+            };
+
+            function abrirPainel() { telaBloqueio.style.display = "none"; telaConteudo.style.display = "flex"; }
+            document.getElementById('btnSair').onclick = () => { telaConteudo.style.display = "none"; telaBloqueio.style.display = "flex"; };
+        }
+        setup();
+    })();
+    </script>
+</body>
+</html>
