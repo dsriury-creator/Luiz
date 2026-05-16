@@ -3,14 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema do Trabalho beta</title>
+    <title>trabalho de pt</title>
+    <!-- Scripts do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body style="background: #000; margin: 0; overflow: hidden;">
     <script>
     (function() {
-        const SENHA_ADMIN = "9ano"; 
-        const SENHA_USER  = "LM"; 
-        const LISTA_BANIDOS = []; 
+        // ==================== CONFIGURAÇÃO DO FIREBASE ====================
+        // IMPORTANTE: Insira suas credenciais aqui. Se deixar como está, ele usará o LocalStorage temporariamente.
+        const firebaseConfig = {
+            apiKey: "AIzaSyBHidRAZ1Go8Y4csa_8jB9xzmmuLDwvN2g",
+  authDomain: "ds7-867f6.firebaseapp.com",
+  databaseURL: "https://ds7-867f6-default-rtdb.firebaseio.com",
+  projectId: "ds7-867f6",
+  storageBucket: "ds7-867f6.firebasestorage.app",
+  messagingSenderId: "1079152583799",
+  appId: "1:1079152583799:web:8b5a4ec74eadd144dd5272",
+  measurementId: "G-06PW665RRT"
+
+        };
+        
+        let db = null;
+        let firebaseAtivo = false;
+
+        // Tenta inicializar o Firebase com segurança sem travar a tela
+        try {
+            if (typeof firebase !== 'undefined' && firebaseConfig.apiKey !== "SUA_API_KEY" && firebaseConfig.apiKey.trim() !== "") {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                firebaseAtivo = true;
+                console.log("Firebase conectado com sucesso.");
+            } else {
+                console.warn("Firebase não configurado. Rodando em modo Local padrão.");
+            }
+        } catch (e) {
+            console.error("Erro ao conectar no Firebase: ", e);
+        }
+        // ===================================================================
+
+        const SENHA_ADMIN = "0Ds"; 
+        const SENHA_USER  = "lm"; 
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1501905751768039564/PvKiHrQJo71MoI6C6Dry3aFivoBZj32wdT2xmDAx_6PQaHhsWcy3i83Zy2HjbIQUd_tc"; 
 
         function gerarID() {
@@ -25,46 +59,147 @@
         }
 
         const MEU_ID = gerarID();
+        
+        // Variáveis de backup locais se o Firebase estiver desligado
+        let LISTA_BANIDOS = JSON.parse(localStorage.getItem('lista_banizados')) || [`ID-DEF5`];
+        let painelUserAtivo = localStorage.getItem('user_ativo') !== 'false';
+        let corPrincipal = localStorage.getItem('tema_cor') || '#808080';
+        let textoInfo = localStorage.getItem('texto_info') || "Este painel foi feito com um fundamento de atrair mais pessoas para aprender ou se tornarem experientes na programação ou ter uma noção mínima";
 
-        if (LISTA_BANIDOS.includes(MEU_ID)) {
-            document.body.innerHTML = `<div style="color:red; text-align:center; margin-top:50px; font-family:sans-serif;"><h1>ACESSO NEGADO</h1><p>Seu dispositivo (${MEU_ID}) foi banido pelo administrador.</p></div>`;
+        // Verifica banimento local imediato para evitar brechas
+        if (!firebaseAtivo && LISTA_BANIDOS.includes(MEU_ID)) {
+            exibirTelaBanido();
             return;
         }
 
-        let painelUserAtivo = localStorage.getItem('user_ativo') !== 'false';
-        let corPrincipal = localStorage.getItem('tema_cor') || '#808080';
-        
-        // CORREÇÃO AQUI: String fechada corretamente
-        let textoInfo = localStorage.getItem('texto_info') || "Bem vindo, digite LM pra ver o conteúdo";
-        
-        if (!localStorage.getItem('logs_sistema')) {
-            localStorage.setItem('logs_sistema', JSON.stringify([]));
+        function exibirTelaBanido() {
+            document.body.innerHTML = `<div style="color:red; text-align:center; margin-top:50px; font-family:sans-serif;"><h1>ACESSO NEGADO</h1><p>Seu dispositivo (${MEU_ID}) foi banido pelo administrador.</p></div>`;
         }
 
-        async function enviarDiscord(log) {
-            if (!WEBHOOK_URL || WEBHOOK_URL === "SUA_URL_AQUI") return;
-            const payload = { embeds: [{ title: "🔔 Novo Login Detectado", color: log.tipo === "ADM" ? 0xff0000 : 0x00ffff, fields: [{ name: "Painel", value: `\`${log.tipo}\``, inline: true }, { name: "ID Único", value: `\`${log.id}\``, inline: true }, { name: "IP", value: `\`${log.ip}\``, inline: true }, { name: "Horário", value: log.hora, inline: false }, { name: "Dispositivo", value: `\`${log.modelo}\``, inline: false }], footer: { text: "Monitoramento de Acesso" }, timestamp: new Date().toISOString() }] };
-            try { await fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } catch (e) { console.error("Erro Webhook:", e); }
-        }
+        // Se o Firebase estiver ativo, monitora tudo online em tempo real
+        if (firebaseAtivo) {
+            db.ref('configuracoes').on('value', (snapshot) => {
+                const dados = snapshot.val();
+                if (dados) {
+                    if (dados.corPrincipal) {
+                        corPrincipal = dados.corPrincipal;
+                        document.documentElement.style.setProperty('--primary', corPrincipal);
+                        const picker = document.getElementById('pickerCor');
+                        if (picker) picker.value = corPrincipal;
+                    }
+                    if (dados.textoInfo) {
+                        textoInfo = dados.textoInfo;
+                        const txtTela = document.getElementById('mainInfoText');
+                        if (txtTela) txtTela.textContent = textoInfo;
+                        const txtArea = document.getElementById('editTextoInfo');
+                        if (txtArea) txtArea.value = textoInfo;
+                    }
+                    if (dados.painelUserAtivo !== undefined) {
+                        painelUserAtivo = dados.painelUserAtivo;
+                    }
+                }
+            });
 
-        const CONTEUDO_BOTAO_1 = `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>🧱 sobre: HTML</h3><p>1. HTML significa HyperText Markup Language.<br>2. É a linguagem de marcação padrão da Web.<br>3. Foi criado por Tim Berners-Lee em 1991.<br>4. Elementos HTML são os blocos de construção.<br>5. As tags normalmente vêm em pares: abertura e fechamento.<br>6. A tag DOCTYPE informa a versão do HTML.<br>7. O elemento raiz de uma página é a tag html.<br>8. Metadados do site ficam dentro da tag head.<br>9. O conteúdo visível fica dentro da tag body.<br>10. Tags h1 a h6 definem a importância dos títulos.<br>11. Parágrafos são definidos pela tag p.<br>12. Links usam a tag a com o atributo href.<br>13. Imagens usam img e exigem o atributo alt.<br>14. Listas não ordenadas usam ul e listas ordenadas ol.<br>15. Itens de lista são marcados com li.<br>16. O HTML5 é a versão mais atual e poderosa.<br>17. Atributos fornecem informações extras sobre elementos.<br>18. A tag div é usada para agrupar blocos de conteúdo.<br>19. A tag span é usada para agrupar elementos em linha.<br>20. Formulários são criados com a tag form.<br>21. Entradas de dados usam a tag input.<br>22. Botões podem ser criados com a tag button.<br>23. Tabelas usam table, tr (linhas) e td (células).<br>24. Comentários são feitos com pontos de exclamação.<br>25. Tags semânticas como header e footer ajudam o SEO.<br>26. O elemento canvas permite desenhar gráficos via JS.<br>27. Tags de áudio e vídeo são nativas no HTML5.<br>28. Caracteres especiais usam entidades como &amp;nbsp;.<br>29. HTML define a estrutura, mas não o estilo.<br>30. É a linguagem essencial para qualquer desenvolvedor.</p></div>`;
-        const CONTEUDO_BOTAO_2 = `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>🎨 sobre: CSS</h3><p>1. CSS significa Cascading Style Sheets.<br>2. Ele descreve como os elementos HTML são exibidos.<br>3. Economiza muito trabalho controlando vários layouts.<br>4. Folhas de estilo externas são armazenadas em arquivos .css.<br>5. Seletores apontam para o elemento HTML que você quer mudar.<br>6. A propriedade color altera a cor do texto.<br>7. Font-size define o tamanho da tipografia.<br>8. Background-color define a cor de fundo.<br>9. O Box Model consiste em margem, borda, preenchimento e conteúdo.<br>10. Padding cria espaço dentro da borda.<br>11. Margin cria espaço fora da borda.<br>12. Border define a espessura e estilo da linha ao redor.<br>13. Text-align alinha o conteúdo horizontalmente.<br>14. Display: flex é a forma moderna de criar layouts.<br>15. Grid Layout divide a página em colunas e linhas.<br>16. Position: absolute move elementos de forma livre.<br>17. Z-index controla a sobreposição de camadas.<br>18. Media Queries permitem design responsivo (celular).<br>19. Hover é um pseudo-classe para passar o mouse.<br>20. Transitions criam mudanças suaves entre states.<br>21. Animations permitem criar movimentos complexos.<br>22. Border-radius arredonda os cantos dos elementos.<br>23. Box-shadow adiciona sombras decorativas.<br>24. Opacity controla a transparência de um objeto.<br>25. Font-family define o tipo de letra do site.<br>26. CSS Variáveis permitem reutilizar cores facilmente.<br>27. Import permite carregar fontes externas do Google.<br>28. Width e Height definem largura e altura.<br>29. Calc() permite fazer cálculos matemáticos no estilo.<br>30. CSS transforma documentos simples em artes visuais.</p></div>`;
-        const CONTEUDO_BOTAO_3 = `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>🧠JavaScript</h3><p>1. JavaScript é uma linguagem de alto nível e dinâmica.<br>2. Foi criada em 1995 por Brendan Eich.<br>3. É a linguagem oficial do navegador (client-side).<br>4. Variáveis podem ser declaradas com let, const ou var.<br>5. Const é usado para valores que não mudam.<br>6. Let permite criar variáveis de escopo de bloco.<br>7. Console.log() é a ferramenta principal de depuração.<br>8. Funções são blocos de código executáveis.<br>9. Arrow functions são formas curtas de escrever funções.<br>10. Arrays são listas que guardam múltiplos dados.<br>11. Objetos guardam coleções de pares chave-valor.<br>12. O DOM é a representação do HTML para o JS.<br>13. Document.getElementById() seleciona elementos.<br>14. Event Listeners detectam cliques e teclas.<br>15. Condicionais If/Else controlam o fluxo de decisão.<br>16. Loops for e while repetem tarefas automaticamente.<br>17. JSON é o formato padrão para troca de dados.<br>18. Fetch API busca dados de servidores externos.<br>19. Promessas (Promises) lidam com processos assíncronos.<br>20. SetTimeout executa código após um atraso.<br>21. LocalStorage salva dados permanentemente no browser.<br>22. Math.random() gera números aleatórios.<br>23. Strings são textos delimitados por aspas.<br>24. Operadores lógicos como && e || comparam valores.<br>25. Template Literals permitem usar variáveis em textos.<br>26. O JS pode ser usado no servidor com Node.js.<br>27. Classes permitem programação orientada a objetos.<br>28. Export/Import organizam o código em módulos.<br>29. Try/Catch captura e trata erros no script.<br>30. JavaScript torna a internet interativa e viva.</p></div>`;
-        const CONTEUDO_VIDEOS = `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>🎥 Vídeos </h3><p><b>Aulas e Referências:</b></p><p>1. Estrutura de Tags: <a href="#" style="color:var(--primary)">link_aula_html.com</a><br>2. Estilização Moderna: <a href="#" style="color:var(--primary)">link_aula_css.com</a><br>3. Lógica de Programação: <a href="#" style="color:var(--primary)">link_aula_js.com</a></p></div>`;
-        const CONTEUDO_CREDITOS= `<div style="background:#1a1a1a; padding:15px; border-radius:8px; border-left:4px solid var(--primary); margin-top:10px; font-size:13px; line-height:1.5;"><h3>👥  Dv</h3><p>Este projeto foi desenvolvido por:</p><ul style="color:var(--primary); font-weight:bold;"><li>0Ds</li><li>meu insta:@0ds.20</li><li>bye</li></ul></div>`;
+            db.ref('banidos').on('value', (snapshot) => {
+                const dados = snapshot.val() || {};
+                LISTA_BANIDOS = Object.keys(dados);
+                if (LISTA_BANIDOS.includes(MEU_ID)) {
+                    exibirTelaBanido();
+                }
+            });
+        }
 
         async function registrarAcesso(tipo) {
             let ip = "Desconhecido";
             try { const response = await fetch('https://api.ipify.org?format=json'); const data = await response.json(); ip = data.ip; } catch (e) { console.log("Erro IP"); }
             const log = { tipo: tipo, id: MEU_ID, hora: new Date().toLocaleString('pt-BR'), ip: ip, modelo: navigator.userAgent.split('(')[1]?.split(')')[0] || "Desconhecido" };
-            let logs = JSON.parse(localStorage.getItem('logs_sistema'));
-            logs.unshift(log);
-            if(logs.length > 50) logs.pop();
-            localStorage.setItem('logs_sistema', JSON.stringify(logs));
+            
+            if (firebaseAtivo) {
+                db.ref('logs_sistema').push(log);
+            } else {
+                let logsLocais = JSON.parse(localStorage.getItem('logs_sistema')) || [];
+                logsLocais.unshift(log);
+                if(logsLocais.length > 30) logsLocais.pop();
+                localStorage.setItem('logs_sistema', JSON.stringify(logsLocais));
+            }
             enviarDiscord(log);
         }
 
-        const CONTEUDO_ADMIN = () => `<div style="padding:20px; color:#fff; font-family:sans-serif;"><h2 style="color:var(--primary);">ADMIN</h2><p style="font-size:10px; color:#666;">SEU ID: ${MEU_ID}</p><hr style="border:1px solid #333; margin-bottom:20px;"><div style="background:#111; padding:15px; border-radius:8px; border:1px solid var(--primary); margin-bottom:15px;"><p style="margin-top:0; color:var(--primary)">📊 <b>LOGIN</b></p><div id="listaLogs" style="max-height:150px; overflow-y:auto; font-size:11px; text-align:left; background:#000; padding:10px; border-radius:4px; border:1px solid #222;">${JSON.parse(localStorage.getItem('logs_sistema')).map(l => `<div style="border-bottom:1px solid #222; padding:5px 0;"><b style="color:var(--primary)">[${l.tipo}]</b> ID: ${l.id}<br>${l.hora} | IP: ${l.ip}</div>`).join('')}</div><button class="btn-adm" style="margin-top:10px; background:#444;" onclick="localStorage.setItem('logs_sistema','[]'); window.open(window.location.href, '_self');">LIMPAR LOGIN</button></div><div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:15px;"><p style="margin-top:0">📝 <b>Texto Inicial</b></p><textarea id="editTextoInfo" style="width:100%; height:60px; background:#1a1a1a; color:#fff; border:1px solid #333; padding:8px; border-radius:4px;">${textoInfo}</textarea><button class="btn-adm" style="background:var(--primary); color:#000; margin-top:10px;" onclick="window.salvarTexto()">SALVAR TEXTO</button></div><div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-top:15px;"><button id="btnToggleUser" class="btn-adm" onclick="window.toggleUser()">${painelUserAtivo ? "Desativar User" : "Ativar User"}</button></div><div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-top:15px;"><div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px;">${['#00ff88','#ff3333','#00bfff','#ffffff','#ffff00','#ff8c00','#a020f0','#ff69b4','#00ffff','#808080'].map(c => `<div onclick="window.mudarCor('${c}')" style="width:25px; height:25px; background:${c}; border-radius:4px; cursor:pointer; border:1px solid #fff"></div>`).join('')}</div></div></div>`;
+        async function enviarDiscord(log) {
+            if (!WEBHOOK_URL || WEBHOOK_URL.includes("SUA_URL")) return;
+            const payload = { embeds: [{ title: "🔔 Novo Login Detectado", color: log.tipo === "ADM" ? 0xff0000 : 0x00ffff, fields: [{ name: "Painel", value: `\`${log.tipo}\``, inline: true }, { name: "ID Único", value: `\`${log.id}\``, inline: true }, { name: "IP", value: `\`${log.ip}\``, inline: true }, { name: "Horário", value: log.hora, inline: false }, { name: "Dispositivo", value: `\`${log.modelo}\``, inline: false }], footer: { text: "Monitoramento de Acesso" }, timestamp: new Date().toISOString() }] };
+            try { await fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } catch (e) { console.error("Erro Webhook:", e); }
+        }
+
+        // ==================== CONTEÚDOS DOS BOTÕES USER ====================
+        const CONTEUDO_BOTAO_1 = `<div style="background:#111; padding:15px; border-radius:8px; border:1px solid var(--primary); margin-bottom:10px; text-align:left; font-size:14px; line-height:1.5;"><strong style="color:var(--primary);">📖 HTML (HyperText Markup Language)</strong><br><br>O HTML é uma linguagem de marcação utilizada na construção de páginas na Web. Ela serve para estruturar e organizar todos os elementos de um site, como textos, títulos, parágrafos, imagens, links e formulários, utilizando tags específicas para que o navegador consiga renderizar a página corretamente.<br><br><code>&lt;html&gt;<br>&nbsp;&nbsp;&lt;body&gt;<br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;h1&gt;Aprendendo HTML&lt;/h1&gt;<br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;p&gt;Esta é uma estrutura básica de marcação.&lt;/p&gt;<br>&nbsp;&nbsp;&lt;/body&gt;<br>&lt;/html&gt;</code></div>`; 
+        const CONTEUDO_BOTAO_2 = `<div style="background:#111; padding:15px; border-radius:8px; border:1px solid var(--primary); margin-bottom:10px; text-align:left; font-size:14px; line-height:1.5;"><strong style="color:var(--primary);">🎨 CSS (Cascading Style Sheets)</strong><br><br>O CSS é uma linguagem de folhas de estilo usada para cuidar de toda a apresentação visual e design de um documento escrito em HTML. Através do CSS, é possível controlar cores, fontes, espaçamentos, layouts, alinhamentos e respostas visuais a interações do usuário em múltiplos dispositivos.<br><br><code>body {<br>&nbsp;&nbsp;background-color: #000000;<br>&nbsp;&nbsp;font-family: Arial, sans-serif;<br>}<br>h1 {<br>&nbsp;&nbsp;color: #00ff88;<br>}</code></div>`; 
+        const CONTEUDO_BOTAO_3 = `<div style="background:#111; padding:15px; border-radius:8px; border:1px solid var(--primary); margin-bottom:10px; text-align:left; font-size:14px; line-height:1.5;"><strong style="color:var(--primary);">🧠 JavaScript (JS)</strong><br><br>O JavaScript é uma linguagem de programação interpretada estruturada e de alto nível. No desenvolvimento web, ela roda do lado do cliente para adicionar dinamismo, interatividade e comportamentos complexos às páginas, permitindo processar dados, manipular o HTML/CSS em tempo real e realizar requisições assíncronas.<br><br><code>let numero = 10;<br>if (numero > 5) {<br>&nbsp;&nbsp;console.log("Executando lógica condicional em JavaScript.");<br>}</code></div>`; 
+        const CONTEUDO_VIDEOS = `<div style="background:#111; padding:15px; border-radius:8px; border:1px solid #ff8c00; margin-bottom:10px; text-align:left; font-size:14px; line-height:1.5;"><strong style="color:#ff8c00;">🎥 Links para Aulas de Programação</strong><br><br>Clique nos botões abaixo para acessar conteúdos completos de aprendizado no YouTube:<br><br><a href="https://www.youtube.com/watch?v=Ejkb_YpuHWs" target="_blank" style="display:block; margin-bottom:8px; padding:10px; background:#222; border:1px solid #ff8c00; color:#fff; text-decoration:none; border-radius:5px; font-weight:bold; text-align:center;">📺 Aula 1: Curso de HTML5 Completo</a><a href="https://www.youtube.com/watch?v=w7A9076THeE" target="_blank" style="display:block; margin-bottom:8px; padding:10px; background:#222; border:1px solid #ff8c00; color:#fff; text-decoration:none; border-radius:5px; font-weight:bold; text-align:center;">📺 Aula 2: Curso de CSS3 Completo</a><a href="https://www.youtube.com/watch?v=BXqUH86F-kA" target="_blank" style="display:block; padding:10px; background:#222; border:1px solid #ff8c00; color:#fff; text-decoration:none; border-radius:5px; font-weight:bold; text-align:center;">📺 Aula 3: Curso de JavaScript Avançado</a></div>`;  
+        const CONTEUDO_CREDITOS = `<div style="background:#111; padding:15px; border-radius:8px; border:1px solid #a020f0; margin-bottom:10px; text-align:center; font-size:14px; line-height:1.5;"><strong style="color:#a020f0;">👥 Créditos de Criação</strong><br><br>Este projeto foi idealizado e desenvolvido pelas mentes criativas listadas abaixo:<br><br><div style="background:#000; padding:10px; border-radius:6px; border-left:3px solid #a020f0; text-align:left; margin-bottom:15px;">📌 <strong>Desenvolvedor Principal:</strong> [COLOQUE_NOME_AQUI]<br>📌 <strong>Colaborador / Designer:</strong> [COLOQUE_NOME_AQUI]<br>📌 <strong>Apoio Técnico:</strong> [COLOQUE_NOME_AQUI]</div><span style="color:#aaa; font-size:12px;">Sistema do Trabalho © 2026 - Todos os direitos reservados.</span></div>`; 
+
+        // ==================== CONTEÚDO DO JOGO ====================
+        const CONTEUDO_JOGO = `        <div style="padding:15px; text-align:center;">            <h3>🦖 Jogo do Dinossauro</h3>            <p style="color:#aaa;">Pressione <strong>ESPAÇO</strong> ou clique/toque para pular</p>                        <canvas id="dinoCanvas" width="650" height="230" style="background:#1f1f1f; border:3px solid #00ff88; border-radius:10px; max-width:100%; display:block; margin:0 auto 15px;"></canvas>                        <p>Pontuação: <span id="dinoScore" style="color:#00ff88; font-weight:bold;">0</span></p>                        <button onclick="reiniciarDino()" style="padding:10px 20px; background:#00ff88; color:#000; border:none; border-radius:6px; font-weight:bold; margin:5px;">🔄 Reiniciar</button>                        <button onclick="toggleGodMode()" id="btnGodmode"                     style="padding:10px 20px; background:#ffd700; color:#000; border:none; border-radius:6px; font-weight:bold; margin:5px;">                🔥 ATIVAR GODMODE            </button>        </div>`;
+
+        let godMode = false;
+        window.iniciarJogoDino = function() {
+            const canvas = document.getElementById("dinoCanvas");
+            if (!canvas) return;
+            const ctx = canvas.getContext("2d");
+            let score = 0, dinoY = 160, velocity = 0, isJumping = false;
+            let obstacles = [], gameSpeed = 5, gameOver = false, frame = 0;
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#555"; ctx.fillRect(0, 200, canvas.width, 30);                                
+                ctx.fillStyle = godMode ? "#ffd700" : "#0f0";
+                ctx.fillRect(80, dinoY, 40, 50);
+                ctx.fillStyle = "#000"; ctx.fillRect(105, dinoY + 15, 12, 12);                                
+                ctx.fillStyle = "#f33";
+                for (let obs of obstacles) ctx.fillRect(obs.x, 175, 30, 35);
+            }
+            function update() {
+                if (gameOver) return;
+                frame++;
+                if (isJumping) {
+                    velocity += 0.9; dinoY += velocity;
+                    if (dinoY >= 160) { dinoY = 160; isJumping = false; }
+                }
+                if (frame % (godMode ? 40 : 50) === 0) obstacles.push({x: canvas.width});                                
+                for (let i = 0; i < obstacles.length; i++) {
+                    obstacles[i].x -= gameSpeed;
+                    if (!godMode && obstacles[i].x < 115 && obstacles[i].x > 70 && dinoY > 130) {
+                        gameOver = true;
+                        alert("Game Over! Pontuação: " + Math.floor(score));
+                        return;
+                    }
+                }
+                obstacles = obstacles.filter(o => o.x > -40);
+                score += godMode ? 0.4 : 0.25;
+                document.getElementById("dinoScore").textContent = Math.floor(score);                                
+                if (score > 500) gameSpeed = godMode ? 9 : 7.5;
+                draw();
+                requestAnimationFrame(update);
+            }
+            const jump = () => { if (!isJumping) { isJumping = true; velocity = -17; } };
+            document.addEventListener("keydown", e => { if (e.key === " ") jump(); });
+            canvas.addEventListener("click", jump);
+            canvas.addEventListener("touchstart", e => { e.preventDefault(); jump(); });
+            update();
+        };
+
+        window.reiniciarDino = () => setTimeout(window.iniciarJogoDino, 100);
+        window.toggleGodMode = function() {
+            godMode = !godMode;
+            const btn = document.getElementById("btnGodmode");
+            if (btn) {
+                btn.textContent = godMode ? "🔥 DESATIVAR GODMODE" : "🔥 ATIVAR GODMODE";
+                btn.style.background = godMode ? "#ff4444" : "#ffd700";
+            }
+            window.iniciarJogoDino();
+        };
+
+        // ==================== OPÇÕES DO MENU ADM ====================
+        const CONTEUDO_ADMIN = () => `        <div style="padding:20px; font-family:sans-serif;">            <div class="box" style="width:100%; max-width:100%; box-sizing:border-box; margin-bottom:15px; text-align:left;">                <h3 style="margin-top:0; color:var(--primary);">🚫 Controle de Banimento ${firebaseAtivo ? '(Nuvem)' : '(Local)'}</h3>                <input type="text" id="idBanir" placeholder="Digite o ID para Banir/Desbanir" style="text-align:left; font-size:14px; padding:8px;">                <button class="btn" onclick="window.admBanirID()" style="background:#ff3333; color:#fff; font-size:14px; padding:8px; margin-bottom:5px;">Banir ID</button>                <button class="btn" onclick="window.admDesbanirID()" style="background:#00ff88; color:#000; font-size:14px; padding:8px;">Desbanir ID</button>            </div>            <div class="box" style="width:100%; max-width:100%; box-sizing:border-box; margin-bottom:15px; text-align:left;">                <h3 style="margin-top:0; color:var(--primary);">🎨 Customização</h3>                <p style="font-size:12px; color:#aaa; margin-bottom:5px;">Escolha a cor principal do sistema:</p>                <input type="color" id="pickerCor" value="${corPrincipal}" onchange="window.mudarCor(this.value)" style="padding:0; height:40px; cursor:pointer;">            </div>            <div class="box" style="width:100%; max-width:100%; box-sizing:border-box; margin-bottom:15px; text-align:left;">                <h3 style="margin-top:0; color:var(--primary);">📋 Logs de Acesso</h3>                <div id="listaLogsContainer" style="max-height:200px; overflow-y:auto; background:#000; padding:10px; border-radius:5px; font-size:11px; font-family:monospace; color:#00ff88;">                    Carregando logs...                </div>                <button class="btn" onclick="window.limparLogs()" style="background:#333; color:#ff3333; margin-top:10px; font-size:12px; padding:6px;">Limpar Logs</button>            </div>            <div class="box" style="width:100%; max-width:100%; box-sizing:border-box; text-align:left;">                <h3 style="margin-top:0; color:var(--primary);">⚙️ Configurações de Texto</h3>                <textarea id="editTextoInfo" style="width:100%; height:60px; background:#1a1a1a; color:#fff; border:1px solid #333; border-radius:6px; padding:5px; box-sizing:border-box; outline:none; font-size:12px;">${textoInfo}</textarea>                <button class="btn" onclick="window.salvarTexto()" style="margin-top:5px; font-size:12px; padding:8px;">Salvar Mensagem Inicial</button>                <button class="btn-adm" onclick="window.toggleUser()">Alternar Bloqueio do Painel User</button>            </div>        </div>`;
 
         function setup() {
             const s = document.createElement('style');
@@ -73,7 +208,7 @@
 
             const telaBloqueio = document.createElement('div');
             telaBloqueio.id = "TelaBloqueio";
-            telaBloqueio.innerHTML = `<div class="box"><div style="color:#555; font-size:10px; letter-spacing:3px; margin-bottom:15px;">painel de consulta</div><div class="info-display" id="mainInfoText">${textoInfo}</div><div style="font-size:9px; color:#444; margin-bottom:10px;">SEU ID: ${MEU_ID}</div><input type="password" id="campoSenha" placeholder="SENHA"><button class="btn" id="btnVerificar">ENTRAR</button></div>`;
+            telaBloqueio.innerHTML = `<div class="box"><div style="color:#555; font-size:10px; letter-spacing:3px; margin-bottom:15px;">trabalho de profissões</div><div class="info-display" id="mainInfoText">${textoInfo}</div><div style="font-size:9px; color:#444; margin-bottom:10px;">SEU ID: ${MEU_ID}</div><input type="password" id="campoSenha" placeholder="SENHA"><button class="btn" id="btnVerificar">ENTRAR</button></div>`;
             document.body.appendChild(telaBloqueio);
 
             const telaConteudo = document.createElement('div');
@@ -81,43 +216,156 @@
             telaConteudo.innerHTML = `<div class="topo" id="statusTopo">ACESSO</div><div id="areaConteudo"></div><button id="btnSair" style="margin:25px; background:#ff3333; color:#fff; border:none; padding:12px; border-radius:6px; width:120px; font-weight:bold; cursor:pointer;">SAIR</button>`;
             document.body.appendChild(telaConteudo);
 
-            window.salvarTexto = () => { textoInfo = document.getElementById('editTextoInfo').value; localStorage.setItem('texto_info', textoInfo); document.getElementById('mainInfoText').textContent = textoInfo; alert("Salvo!"); };
-            window.mudarCor = (cor) => { corPrincipal = cor; localStorage.setItem('tema_cor', cor); document.documentElement.style.setProperty('--primary', cor); };
-            window.toggleUser = () => { painelUserAtivo = !painelUserAtivo; localStorage.setItem('user_ativo', painelUserAtivo); alert("Status alterado!"); };
+            // Ações administrativas adaptáveis (Nuvem ou Local)
+            window.salvarTexto = () => { 
+                const txt = document.getElementById('editTextoInfo').value; 
+                if (firebaseAtivo) {
+                    db.ref('configuracoes/textoInfo').set(txt).then(() => alert("Texto salvo na Nuvem!"));
+                } else {
+                    textoInfo = txt; localStorage.setItem('texto_info', txt);
+                    document.getElementById('mainInfoText').textContent = txt; alert("Salvo Localmente!");
+                }
+            };
+            
+            window.mudarCor = (cor) => { 
+                corPrincipal = cor;
+                document.documentElement.style.setProperty('--primary', cor);
+                if (firebaseAtivo) {
+                    db.ref('configuracoes/corPrincipal').set(cor);
+                } else {
+                    localStorage.setItem('tema_cor', cor);
+                }
+            };
+            
+            window.toggleUser = () => { 
+                painelUserAtivo = !painelUserAtivo;
+                if (firebaseAtivo) {
+                    db.ref('configuracoes/painelUserAtivo').set(painelUserAtivo).then(() => alert("Status alterado na nuvem!"));
+                } else {
+                    localStorage.setItem('user_ativo', painelUserAtivo); alert("Status alterado localmente!");
+                }
+            };
+            
+            window.admBanirID = function() {
+                const id = document.getElementById('idBanir').value.trim().toUpperCase();
+                if(!id) return alert("Insira um ID válido!");
+                if (firebaseAtivo) {
+                    db.ref('banidos/' + id).set(true).then(() => alert(`ID ${id} banido online.`));
+                } else {
+                    if(!LISTA_BANIDOS.includes(id)) {
+                        LISTA_BANIDOS.push(id); localStorage.setItem('lista_banizados', JSON.stringify(LISTA_BANIDOS));
+                        alert(`ID ${id} banido localmente.`);
+                    }
+                }
+                document.getElementById('idBanir').value = "";
+            };
+
+            window.admDesbanirID = function() {
+                const id = document.getElementById('idBanir').value.trim().toUpperCase();
+                if(!id) return alert("Insira um ID válido!");
+                if (firebaseAtivo) {
+                    db.ref('banidos/' + id).remove().then(() => alert(`ID ${id} desbanido online.`));
+                } else {
+                    LISTA_BANIDOS = LISTA_BANIDOS.filter(item => item !== id);
+                    localStorage.setItem('lista_banizados', JSON.stringify(LISTA_BANIDOS));
+                    alert(`ID ${id} desbanido localmente.`);
+                }
+                document.getElementById('idBanir').value = "";
+            };
+
+            window.atualizarLogsInterface = function() {
+                const container = document.getElementById('listaLogsContainer');
+                if(!container) return;
+
+                if (firebaseAtivo) {
+                    db.ref('logs_sistema').limitToLast(25).on('value', (snapshot) => {
+                        const dados = snapshot.val();
+                        if(!dados) { container.innerHTML = "Nenhum log na nuvem."; return; }
+                        const listaLogs = Object.values(dados).reverse();
+                        container.innerHTML = listaLogs.map(l => `<div style="border-bottom:1px solid #222; padding:4px 0;">[${l.hora}] <strong>${l.tipo}</strong><br>ID: ${l.id} | IP: ${l.ip}<br>Disp: ${l.modelo}</div>`).join('');
+                    });
+                } else {
+                    const logs = JSON.parse(localStorage.getItem('logs_sistema')) || [];
+                    if(logs.length === 0) { container.innerHTML = "Nenhum log local."; return; }
+                    container.innerHTML = logs.map(l => `<div style="border-bottom:1px solid #222; padding:4px 0;">[${l.hora}] <strong>${l.tipo}</strong><br>ID: ${l.id} | IP: ${l.ip}<br>Disp: ${l.modelo}</div>`).join('');
+                }
+            };
+
+            window.limparLogs = function() {
+                if(confirm("Deseja apagar os logs atuais?")) {
+                    if (firebaseAtivo) {
+                        db.ref('logs_sistema').remove().then(() => alert("Logs limpos na nuvem!"));
+                    } else {
+                        localStorage.setItem('logs_sistema', JSON.stringify([])); window.atualizarLogsInterface();
+                    }
+                }
+            };
 
             document.getElementById('btnVerificar').onclick = () => {
                 const campo = document.getElementById('campoSenha');
                 const entrada = campo.value;
                 const area = document.getElementById('areaConteudo');
-                if (entrada === SENHA_ADMIN) { registrarAcesso("ADM"); area.innerHTML = CONTEUDO_ADMIN(); document.getElementById('statusTopo').textContent = "ADMINISTRADOR"; abrirPainel(); } 
-                else if (entrada === SENHA_USER) { 
-                    if(!painelUserAtivo) return alert("BLOQUEADO"); 
-                    registrarAcesso("USER"); 
-                    area.innerHTML = `<div style="padding:20px;">
+                
+                if (entrada === SENHA_ADMIN) { 
+                     registrarAcesso("ADM"); 
+                     area.innerHTML = CONTEUDO_ADMIN(); 
+                     document.getElementById('statusTopo').textContent = "ADMINISTRADOR"; 
+                     abrirPainel(); 
+                     window.atualizarLogsInterface(); 
+                 } 
+                 else if (entrada === SENHA_USER) { 
+                     if(!painelUserAtivo) return alert("BLOQUEADO"); 
+                     registrarAcesso("USER"); 
+                     
+                     area.innerHTML = `<div style="padding:20px;">
                         <button class="btn" id="uBtn1">📖 LINGUAGEM HTML</button>
                         <div id="uBox1" style="display:none; margin-bottom:15px;">${CONTEUDO_BOTAO_1}</div>
+                        
                         <button class="btn" id="uBtn2">🎨 LINGUAGEM CSS</button>
                         <div id="uBox2" style="display:none; margin-bottom:15px;">${CONTEUDO_BOTAO_2}</div>
+                        
                         <button class="btn" id="uBtn3">🧠 LINGUAGEM JS</button>
                         <div id="uBox3" style="display:none; margin-bottom:15px;">${CONTEUDO_BOTAO_3}</div>
-                        <button class="btn" id="uBtn4" style="background:#ff8c00;">🎥 VÍDEOS </button>
+                        
+                        <button class="btn" id="uBtn4" style="background:#ff8c00;">🎥 VÍDEOS AULA</button>
                         <div id="uBox4" style="display:none; margin-bottom:15px;">${CONTEUDO_VIDEOS}</div>
+                        
                         <button class="btn" id="uBtn5" style="background:#a020f0; color:#fff;">👥 CRÉDITOS</button>
                         <div id="uBox5" style="display:none; margin-bottom:15px;">${CONTEUDO_CREDITOS}</div>
+                        
+                        <button class="btn" id="uBtn6" style="background:#00ff88; color:#000;">🦖 JOGO DO DINOSSAURO</button>
+                        <div id="uBox6" style="display:none; margin-bottom:15px;">${CONTEUDO_JOGO}</div>
                     </div>`; 
-                    document.getElementById('statusTopo').textContent = "Luiz Magno"; 
-                    abrirPainel(); 
-                    [1,2,3,4,5].forEach(i => document.getElementById(`uBtn${i}`).onclick = () => { 
-                        const d = document.getElementById(`uBox${i}`); 
-                        d.style.display = d.style.display === "none" ? "block" : "none"; 
-                    }); 
-                }
-                else { alert("SENHA INCORRETA"); }
+                     
+                     document.getElementById('statusTopo').textContent = "LM"; 
+                     abrirPainel(); 
+                     
+                     [1,2,3,4,5,6].forEach(i => {
+                        const btn = document.getElementById(`uBtn${i}`);
+                        if (btn) btn.onclick = () => { 
+                             const box = document.getElementById(`uBox${i}`);
+                             box.style.display = box.style.display === "none" ? "block" : "none"; 
+                             if (i === 6 && box.style.display === "block") {
+                                setTimeout(window.iniciarJogoDino, 200);
+                             }
+                        };
+                    });
+                } 
+                else { 
+                     alert("SENHA INCORRETA"); 
+                 }
                 campo.value = "";
             };
 
-            function abrirPainel() { telaBloqueio.style.display = "none"; telaConteudo.style.display = "flex"; }
-            document.getElementById('btnSair').onclick = () => { telaConteudo.style.display = "none"; telaBloqueio.style.display = "flex"; };
+            function abrirPainel() { 
+                 telaBloqueio.style.display = "none"; 
+                 telaConteudo.style.display = "flex"; 
+            } 
+            
+            document.getElementById('btnSair').onclick = () => { 
+                 telaConteudo.style.display = "none"; 
+                 telaBloqueio.style.display = "flex"; 
+            };
         }
         setup();
     })();
